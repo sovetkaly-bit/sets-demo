@@ -1,184 +1,160 @@
 import statistics
 import streamlit as st
 
+
+# ---------------------------------------------------------
+# НАСТРОЙКА СТРАНИЦЫ
+# ---------------------------------------------------------
+
 st.set_page_config(
-    page_title="SETDS — Simple Interactive Demo",
+    page_title="SETDS — интерактивная демонстрация",
     page_icon="◈",
     layout="centered",
     initial_sidebar_state="collapsed",
 )
 
+
+# ---------------------------------------------------------
+# ВНЕШНИЙ ВИД
+# ---------------------------------------------------------
+
 st.markdown(
     """
     <style>
-    [data-testid="stSidebar"]{
-        display:none;
+
+    [data-testid="stSidebar"] {
+        display: none;
     }
 
-    .block-container{
-        max-width:760px;
-        padding-top:1.1rem;
-        padding-bottom:3rem;
+    .block-container {
+        max-width: 760px;
+        padding-top: 1rem;
+        padding-bottom: 3rem;
     }
 
-    h1{
-        font-size:2rem!important;
-        letter-spacing:-.03em;
-        margin-bottom:.2rem;
+    h1 {
+        font-size: 2rem !important;
+        letter-spacing: -0.03em;
     }
 
-    h2{
-        font-size:1.25rem!important;
+    h2 {
+        font-size: 1.35rem !important;
     }
 
-    .small{
-        color:#667085;
-        font-size:.86rem;
+    h3 {
+        font-size: 1.1rem !important;
     }
 
-    .hero{
-        padding:18px;
-        border-radius:18px;
-        background:linear-gradient(135deg,#eef4ff,#f8f7ff);
-        border:1px solid #dce5ff;
-        margin-bottom:16px;
+    .stButton > button {
+        min-height: 3rem;
+        border-radius: 12px;
+        font-weight: 700;
     }
 
-    .card{
-        background:#fff;
-        border:1px solid #e5eaf1;
-        border-radius:16px;
-        padding:16px;
-        margin:10px 0;
-        box-shadow:0 8px 22px rgba(16,24,40,.04);
+    div[data-testid="stMetric"] {
+        border: 1px solid #e5e7eb;
+        border-radius: 14px;
+        padding: 10px;
+        background: white;
     }
 
-    .callout{
-        padding:14px 15px;
-        border-radius:14px;
-        background:#eef4ff;
-        border-left:4px solid #3157d5;
-        margin:10px 0;
-    }
+    @media (max-width: 700px) {
 
-    .good{
-        background:#ecfdf3;
-        border-left-color:#12b76a;
-    }
-
-    .warn{
-        background:#fff8e8;
-        border-left-color:#f59e0b;
-    }
-
-    .bad{
-        background:#fff1f3;
-        border-left-color:#f04438;
-    }
-
-    .pill{
-        display:inline-block;
-        padding:4px 9px;
-        border-radius:999px;
-        font-size:.74rem;
-        font-weight:800;
-        margin-right:5px;
-    }
-
-    .purple{
-        background:#ede9fe;
-        color:#6d28d9;
-    }
-
-    .stButton>button{
-        border-radius:12px;
-        min-height:3rem;
-        font-weight:800;
-    }
-
-    div[data-testid="stMetric"]{
-        background:#fff;
-        border:1px solid #e5eaf1;
-        border-radius:15px;
-        padding:12px;
-    }
-
-    @media(max-width:700px){
-        .block-container{
-            padding-left:1rem;
-            padding-right:1rem;
+        .block-container {
+            padding-left: 1rem;
+            padding-right: 1rem;
         }
 
-        h1{
-            font-size:1.6rem!important;
+        h1 {
+            font-size: 1.65rem !important;
         }
+
     }
+
     </style>
     """,
     unsafe_allow_html=True,
 )
 
 
-def init():
+# ---------------------------------------------------------
+# НАЧАЛЬНЫЕ ЗНАЧЕНИЯ
+# ---------------------------------------------------------
+
+def initialize():
+
     defaults = {
         "enterprise": "Altair (demo)",
+
         "visit1": 6,
         "visit2": 3,
         "visit3": 2,
+
         "rating1": 9,
         "rating2": 7,
         "rating3": 7,
-        "spa_feedback": True,
-        "ops_confirm": True,
+
+        "spa_problem": False,
+        "spa_confirmed": False,
+
         "room_problem": False,
         "service_problem": False,
         "staff_problem": False,
         "price_problem": False,
         "competitor_problem": False,
+
         "custom_fact": "",
+
         "analysis": None,
-        "solution_answer": None,
+        "solution_result": None,
     }
 
     for key, value in defaults.items():
+
         if key not in st.session_state:
             st.session_state[key] = value
 
 
-init()
+initialize()
 
 
-st.markdown(
-    """
-    <div class="hero">
-        <div class="small">
-            <b>Interactive research demo</b>
-        </div>
+# ---------------------------------------------------------
+# ЗАГОЛОВОК
+# ---------------------------------------------------------
 
-        <h1>◈ SETDS</h1>
+st.title("◈ SETDS")
 
-        <div class="small">
-            Введите несколько значений, отметьте известные факты
-            и нажмите одну кнопку.
-            Система покажет, что изменилось, почему это могло произойти
-            и что разумно сделать дальше.
-        </div>
-    </div>
-    """,
-    unsafe_allow_html=True,
+st.write(
+    "Введите несколько данных о ситуации. "
+    "Система покажет, что изменилось, "
+    "какие причины сейчас наиболее вероятны "
+    "и что разумно сделать дальше."
 )
 
+st.caption(
+    "Интерактивная исследовательская демонстрация"
+)
 
-st.subheader("1. Введите данные")
+st.divider()
+
+
+# ---------------------------------------------------------
+# 1. ОСНОВНЫЕ ДАННЫЕ
+# ---------------------------------------------------------
+
+st.header("1. Введите данные")
+
 
 st.session_state.enterprise = st.text_input(
     "Объект / предприятие",
-    st.session_state.enterprise,
+    value=st.session_state.enterprise,
 )
 
-st.markdown(
-    "**Длительность трёх визитов одного повторного гостя**"
+
+st.subheader(
+    "Длительность трёх визитов одного повторного гостя"
 )
+
 
 visit1 = st.number_input(
     "Первый визит, ночей",
@@ -187,12 +163,14 @@ visit1 = st.number_input(
     step=1,
 )
 
+
 visit2 = st.number_input(
     "Второй визит, ночей",
     min_value=1,
     value=int(st.session_state.visit2),
     step=1,
 )
+
 
 visit3 = st.number_input(
     "Последний визит, ночей",
@@ -201,18 +179,23 @@ visit3 = st.number_input(
     step=1,
 )
 
+
 st.session_state.visit1 = visit1
 st.session_state.visit2 = visit2
 st.session_state.visit3 = visit3
 
 
+# ---------------------------------------------------------
+# РЕЙТИНГИ
+# ---------------------------------------------------------
+
 with st.expander(
-    "Дополнительно: рейтинги",
+    "Дополнительно: оценки гостя",
     expanded=False,
 ):
 
     rating1 = st.number_input(
-        "Рейтинг первого визита",
+        "Оценка после первого визита",
         min_value=0,
         max_value=10,
         value=int(st.session_state.rating1),
@@ -220,7 +203,7 @@ with st.expander(
     )
 
     rating2 = st.number_input(
-        "Рейтинг второго визита",
+        "Оценка после второго визита",
         min_value=0,
         max_value=10,
         value=int(st.session_state.rating2),
@@ -228,7 +211,7 @@ with st.expander(
     )
 
     rating3 = st.number_input(
-        "Рейтинг последнего визита",
+        "Оценка после последнего визита",
         min_value=0,
         max_value=10,
         value=int(st.session_state.rating3),
@@ -240,232 +223,349 @@ with st.expander(
     st.session_state.rating3 = rating3
 
 
-st.markdown("**Что известно о ситуации?**")
+# ---------------------------------------------------------
+# ЧТО ИЗВЕСТНО
+# ---------------------------------------------------------
 
-st.session_state.spa_feedback = st.checkbox(
-    "Гость сообщил о проблеме со spa или неудобном времени",
-    value=st.session_state.spa_feedback,
-)
+st.subheader("Что известно о ситуации?")
 
-st.session_state.ops_confirm = st.checkbox(
-    "Журнал или персонал подтверждает высокую загрузку услуги",
-    value=st.session_state.ops_confirm,
-)
 
 st.session_state.room_problem = st.checkbox(
-    "Есть проблема с номером / спальней: шум, кровать, температура, чистота или комфорт",
+    "Есть проблема с номером / спальней: "
+    "шум, кровать, температура, чистота или комфорт",
     value=st.session_state.room_problem,
 )
 
+
+st.session_state.spa_problem = st.checkbox(
+    "Гость сообщил о проблеме со spa "
+    "или не смог выбрать удобное время",
+    value=st.session_state.spa_problem,
+)
+
+
+st.session_state.spa_confirmed = st.checkbox(
+    "Журнал или персонал подтверждает, "
+    "что spa / услуга действительно была перегружена",
+    value=st.session_state.spa_confirmed,
+)
+
+
 st.session_state.service_problem = st.checkbox(
-    "Есть проблема с другой услугой: питание, Wi-Fi, парковка, трансфер, бассейн или другое",
+    "Есть проблема с другой услугой: "
+    "питание, Wi-Fi, бассейн, трансфер, парковка или другое",
     value=st.session_state.service_problem,
 )
 
+
 st.session_state.staff_problem = st.checkbox(
-    "Есть жалобы на обслуживание, очередь или нехватку персонала",
+    "Есть жалобы на обслуживание, "
+    "очередь, задержки или нехватку персонала",
     value=st.session_state.staff_problem,
 )
 
+
 st.session_state.price_problem = st.checkbox(
-    "Гость считает цену высокой или у конкурентов предложение выгоднее",
+    "Есть признаки того, что гостя не устраивает цена",
     value=st.session_state.price_problem,
 )
 
+
 st.session_state.competitor_problem = st.checkbox(
-    "У конкурента появилась новая услуга, выше рейтинг или более сильное предложение",
+    "У конкурента появилось более сильное предложение: "
+    "ниже цена, выше рейтинг или новая услуга",
     value=st.session_state.competitor_problem,
 )
 
-st.session_state.custom_fact = st.text_input(
+
+st.session_state.custom_fact = st.text_area(
     "Другой известный факт",
     value=st.session_state.custom_fact,
-    placeholder="Например: в номере было шумно ночью",
+    placeholder=(
+        "Например: гость написал, "
+        "что ночью было шумно и плохо спал"
+    ),
+    height=90,
 )
 
 
+# ---------------------------------------------------------
+# АНАЛИЗ
+# ---------------------------------------------------------
+
 def analyze():
 
-    values = [
+    visits = [
         float(st.session_state.visit1),
         float(st.session_state.visit2),
         float(st.session_state.visit3),
     ]
 
-    deviation_2 = (
-        values[1] - values[0]
-    ) / values[0]
+    ratings = [
+        float(st.session_state.rating1),
+        float(st.session_state.rating2),
+        float(st.session_state.rating3),
+    ]
 
-    baseline_3 = statistics.mean(
-        values[:2]
+
+    # -----------------------------------------
+    # ДИНАМИКА ВИЗИТОВ
+    # -----------------------------------------
+
+    change_second = (
+        visits[1] - visits[0]
+    ) / visits[0]
+
+
+    previous_mean = statistics.mean(
+        visits[:2]
     )
 
-    deviation_3 = (
-        values[2] - baseline_3
-    ) / baseline_3
 
-    persistence = (
-        int(deviation_2 < -0.30)
-        + int(deviation_3 < -0.30)
-    )
+    change_latest = (
+        visits[2] - previous_mean
+    ) / previous_mean
+
+
+    persistence = 0
+
+
+    if change_second <= -0.30:
+        persistence += 1
+
+
+    if change_latest <= -0.30:
+        persistence += 1
+
 
     worsening = (
-        deviation_2 < 0
-        and deviation_3 < 0
-        and abs(deviation_3)
-        > abs(deviation_2)
+        change_second < 0
+        and change_latest < 0
+        and abs(change_latest)
+        > abs(change_second)
     )
 
-    source_types = {
-        "guest_behavior"
-    }
 
-    if st.session_state.spa_feedback:
-        source_types.add(
-            "guest_feedback"
-        )
+    # -----------------------------------------
+    # РЕЙТИНГ
+    # -----------------------------------------
+
+    rating_change = (
+        ratings[-1] - ratings[0]
+    )
+
+
+    rating_decline = (
+        rating_change <= -2
+    )
+
+
+    # -----------------------------------------
+    # СИЛА СИГНАЛА
+    # -----------------------------------------
+
+    supporting_facts = 0
+
+
+    if persistence >= 1:
+        supporting_facts += 1
+
+
+    if persistence >= 2:
+        supporting_facts += 1
+
+
+    if worsening:
+        supporting_facts += 1
+
+
+    if rating_decline:
+        supporting_facts += 1
+
 
     if st.session_state.room_problem:
-        source_types.add(
-            "room_feedback"
-        )
+        supporting_facts += 1
+
+
+    if st.session_state.spa_problem:
+        supporting_facts += 1
+
 
     if st.session_state.service_problem:
-        source_types.add(
-            "service_feedback"
-        )
+        supporting_facts += 1
+
 
     if st.session_state.staff_problem:
-        source_types.add(
-            "service_operation"
-        )
+        supporting_facts += 1
 
-    if st.session_state.price_problem:
-        source_types.add(
-            "price_signal"
-        )
 
-    if st.session_state.competitor_problem:
-        source_types.add(
-            "competitor_signal"
-        )
+    if supporting_facts >= 5:
 
-    if (
-        persistence >= 2
-        and len(source_types) >= 2
-        and worsening
-    ):
-        severity = "RED FLAG"
+        signal_level = "Сильный сигнал"
 
-    elif (
-        persistence >= 2
-        or len(source_types) >= 2
-    ):
-        severity = "WARNING"
 
-    elif abs(deviation_3) >= 0.30:
-        severity = "WATCH"
+    elif supporting_facts >= 3:
+
+        signal_level = "Средний сигнал"
+
+
+    elif supporting_facts >= 1:
+
+        signal_level = "Слабый сигнал"
+
 
     else:
-        severity = "NONE"
+
+        signal_level = "Заметного сигнала нет"
 
 
-    priors = {
-        "Spa capacity / schedule mismatch": 0.20,
-        "Room / sleep comfort problem": 0.20,
-        "Price sensitivity": 0.20,
-        "Service / staff issue": 0.20,
-        "Competitor pull": 0.20,
+    # -----------------------------------------
+    # ГИПОТЕЗЫ
+    # -----------------------------------------
+
+    hypotheses = {
+        "Проблема с номером или качеством сна": 1.0,
+
+        "Перегруженность spa или неудобное время услуги": 1.0,
+
+        "Проблема с обслуживанием или персоналом": 1.0,
+
+        "Проблема с другой услугой": 1.0,
+
+        "Ценовая чувствительность гостя": 1.0,
+
+        "Более сильное предложение конкурента": 1.0,
+
+        "Личные обстоятельства гостя": 1.0,
     }
 
-    weights = {
-        key: 1.0
-        for key in priors
-    }
 
     reasons = []
 
 
-    if st.session_state.spa_feedback:
-
-        weights[
-            "Spa capacity / schedule mismatch"
-        ] *= 2.0
-
-        weights[
-            "Price sensitivity"
-        ] *= 0.7
-
-        reasons.append(
-            "Гость сообщил о неудобных или недоступных spa-слотах."
-        )
-
-
-    if st.session_state.ops_confirm:
-
-        weights[
-            "Spa capacity / schedule mismatch"
-        ] *= 1.8
-
-        reasons.append(
-            "Операционный источник подтверждает высокую загрузку услуги."
-        )
-
+    # -----------------------------------------
+    # НОМЕР / СПАЛЬНЯ
+    # -----------------------------------------
 
     if st.session_state.room_problem:
 
-        weights[
-            "Room / sleep comfort problem"
+        hypotheses[
+            "Проблема с номером или качеством сна"
+        ] *= 3.0
+
+        reasons.append(
+            "Указана проблема с номером, спальней "
+            "или качеством сна."
+        )
+
+
+    # -----------------------------------------
+    # SPA
+    # -----------------------------------------
+
+    if st.session_state.spa_problem:
+
+        hypotheses[
+            "Перегруженность spa или неудобное время услуги"
+        ] *= 2.5
+
+        reasons.append(
+            "Гость сообщил о проблеме "
+            "с доступностью spa или временем услуги."
+        )
+
+
+    if st.session_state.spa_confirmed:
+
+        hypotheses[
+            "Перегруженность spa или неудобное время услуги"
         ] *= 2.0
 
         reasons.append(
-            "Есть зафиксированная проблема с номером, спальней или качеством сна."
+            "Операционные данные подтверждают "
+            "перегруженность услуги."
         )
 
 
-    if st.session_state.service_problem:
-
-        weights[
-            "Service / staff issue"
-        ] *= 1.6
-
-        reasons.append(
-            "Есть проблема с дополнительной услугой."
-        )
-
+    # -----------------------------------------
+    # ОБСЛУЖИВАНИЕ
+    # -----------------------------------------
 
     if st.session_state.staff_problem:
 
-        weights[
-            "Service / staff issue"
-        ] *= 1.8
+        hypotheses[
+            "Проблема с обслуживанием или персоналом"
+        ] *= 3.0
 
         reasons.append(
-            "Есть признаки очередей, перегрузки или нехватки персонала."
+            "Есть информация об очередях, задержках "
+            "или нехватке персонала."
         )
 
+
+    # -----------------------------------------
+    # ДРУГАЯ УСЛУГА
+    # -----------------------------------------
+
+    if st.session_state.service_problem:
+
+        hypotheses[
+            "Проблема с другой услугой"
+        ] *= 2.5
+
+        reasons.append(
+            "Есть зафиксированная проблема "
+            "с одной из дополнительных услуг."
+        )
+
+
+    # -----------------------------------------
+    # ЦЕНА
+    # -----------------------------------------
 
     if st.session_state.price_problem:
 
-        weights[
-            "Price sensitivity"
-        ] *= 1.8
+        hypotheses[
+            "Ценовая чувствительность гостя"
+        ] *= 3.0
 
         reasons.append(
-            "Есть признаки ценовой чувствительности или более выгодного предложения."
+            "Есть признаки того, "
+            "что цена влияет на решение гостя."
         )
 
+
+    # -----------------------------------------
+    # КОНКУРЕНТ
+    # -----------------------------------------
 
     if st.session_state.competitor_problem:
 
-        weights[
-            "Competitor pull"
-        ] *= 1.8
+        hypotheses[
+            "Более сильное предложение конкурента"
+        ] *= 3.0
 
         reasons.append(
-            "Есть признаки усиления предложения конкурента."
+            "Есть признаки усиления "
+            "предложения конкурента."
         )
 
+
+    # -----------------------------------------
+    # РЕЙТИНГ
+    # -----------------------------------------
+
+    if rating_decline:
+
+        reasons.append(
+            f"Оценка гостя снизилась "
+            f"с {int(ratings[0])} до {int(ratings[-1])}."
+        )
+
+
+    # -----------------------------------------
+    # ДРУГОЙ ФАКТ
+    # -----------------------------------------
 
     if st.session_state.custom_fact.strip():
 
@@ -475,114 +575,120 @@ def analyze():
         )
 
 
-    unnormalized = {
-        key:
-        priors[key]
-        * weights[key]
+    # -----------------------------------------
+    # НОРМАЛИЗАЦИЯ
+    # -----------------------------------------
 
-        for key in priors
-    }
-
-    denominator = sum(
-        unnormalized.values()
+    total_weight = sum(
+        hypotheses.values()
     )
 
-    posterior = {
-        key:
-        value / denominator
 
-        for key, value
-        in unnormalized.items()
+    confidence = {
+        name: weight / total_weight
+
+        for name, weight
+        in hypotheses.items()
     }
 
-    leading_hypothesis = max(
-        posterior,
-        key=posterior.get,
+
+    sorted_hypotheses = sorted(
+        confidence.items(),
+        key=lambda x: x[1],
+        reverse=True,
     )
 
-    leading_confidence = posterior[
-        leading_hypothesis
-    ]
+
+    leading_hypothesis = (
+        sorted_hypotheses[0][0]
+    )
+
+
+    leading_confidence = (
+        sorted_hypotheses[0][1]
+    )
+
+
+    # -----------------------------------------
+    # РЕКОМЕНДАЦИЯ
+    # -----------------------------------------
+
+    evidence_count = len(
+        reasons
+    )
 
 
     if (
-        leading_confidence >= 0.45
-        and len(reasons) >= 2
+        leading_confidence >= 0.30
+        and evidence_count >= 2
     ):
 
-        disposition = (
-            "ПРОВЕРИТЬ РЕШЕНИЕ"
+        recommendation_title = (
+            "Проверить решение на небольшом масштабе"
         )
 
-        action = (
-            "Попробовать небольшой, обратимый вариант решения "
-            "на ограниченном числе гостей или смен, "
-            "а затем посмотреть, помогло ли это."
+        recommendation = (
+            "Не менять весь процесс сразу. "
+            "Попробовать ограниченное и обратимое решение, "
+            "после чего сравнить результат."
         )
 
-    elif (
-        leading_confidence >= 0.35
-    ):
 
-        disposition = (
-            "СОБРАТЬ ЕЩЁ ДАННЫЕ"
+    elif evidence_count >= 1:
+
+        recommendation_title = (
+            "Собрать ещё одно подтверждение"
         )
 
-        action = (
-            "Проверить ещё один независимый источник "
-            "перед изменением процесса."
+        recommendation = (
+            "Причина выглядит возможной, "
+            "но данных пока мало. "
+            "Лучше проверить ещё один независимый источник."
         )
+
 
     else:
 
-        disposition = (
-            "НАБЛЮДАТЬ"
+        recommendation_title = (
+            "Пока наблюдать"
         )
 
-        action = (
-            "Пока не менять процесс. "
-            "Собрать больше информации."
+        recommendation = (
+            "Данных недостаточно для уверенного решения. "
+            "Пока не менять процесс и продолжить наблюдение."
         )
 
 
     return {
-        "severity":
-        severity,
+        "change_second": change_second,
 
-        "deviation_2":
-        deviation_2,
+        "change_latest": change_latest,
 
-        "deviation_3":
-        deviation_3,
+        "persistence": persistence,
 
-        "persistence":
-        persistence,
+        "worsening": worsening,
 
-        "worsening":
-        worsening,
+        "rating_change": rating_change,
 
-        "source_types":
-        sorted(source_types),
+        "signal_level": signal_level,
 
-        "posterior":
-        posterior,
+        "hypotheses": sorted_hypotheses,
 
-        "leading_hypothesis":
-        leading_hypothesis,
+        "leading_hypothesis": leading_hypothesis,
 
-        "leading_confidence":
-        leading_confidence,
+        "leading_confidence": leading_confidence,
 
-        "reasons":
-        reasons,
+        "reasons": reasons,
 
-        "action":
-        action,
+        "recommendation_title": recommendation_title,
 
-        "disposition":
-        disposition,
+        "recommendation": recommendation,
     }
 
+
+# ---------------------------------------------------------
+# КНОПКА АНАЛИЗА
+# ---------------------------------------------------------
 
 if st.button(
     "АНАЛИЗИРОВАТЬ",
@@ -590,310 +696,86 @@ if st.button(
     use_container_width=True,
 ):
 
-    st.session_state.analysis = (
-        analyze()
-    )
+    st.session_state.analysis = analyze()
 
-    st.session_state.solution_answer = None
+    st.session_state.solution_result = None
 
+
+# ---------------------------------------------------------
+# РЕЗУЛЬТАТ
+# ---------------------------------------------------------
 
 if st.session_state.analysis:
 
-    result = (
-        st.session_state.analysis
-    )
+    result = st.session_state.analysis
 
-    st.markdown("---")
+    st.divider()
 
-    st.subheader(
-        "2. Что показывает SETDS"
-    )
+    st.header("2. Результат")
 
-    col1, col2, col3 = (
-        st.columns(3)
-    )
+
+    col1, col2 = st.columns(2)
+
 
     col1.metric(
-        "Сигнал",
-        result["severity"],
+        "Сила сигнала",
+        result["signal_level"],
     )
 
+
     col2.metric(
-        "Повторяемость",
+        "Повторяемость ухудшения",
         result["persistence"],
     )
 
-    col3.metric(
-        "Последнее изменение",
-        f"{result['deviation_3']:.1%}",
+
+    st.subheader("Что произошло")
+
+
+    st.write(
+        f"Длительность визитов изменилась: "
+        f"**{st.session_state.visit1} → "
+        f"{st.session_state.visit2} → "
+        f"{st.session_state.visit3} ночей**."
     )
 
 
-    st.markdown(
-        f"""
-        <div class="card">
+    if result["worsening"]:
 
-            <b>
-                Что изменилось
-            </b>
-
-            <br>
-
-            Длительность визитов:
-
-            {st.session_state.visit1}
-            →
-            {st.session_state.visit2}
-            →
-            {st.session_state.visit3}
-
-            ночей.
-
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-
-    st.markdown(
-        f"""
-        <div class="card">
-
-            <b>
-                Ведущая возможная причина
-            </b>
-
-            <br>
-
-            {result['leading_hypothesis']}
-
-            —
-
-            <b>
-                {result['leading_confidence']:.1%}
-            </b>
-
-            <br>
-
-            <span class="pill purple">
-                Возможная причина
-            </span>
-
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-
-    if result["reasons"]:
-
-        reasons_html = "<br>".join(
-            "• " + item
-            for item
-            in result["reasons"]
-        )
-
-        st.markdown(
-            f"""
-            <div class="card">
-
-                <b>
-                    Почему система так считает
-                </b>
-
-                <br>
-
-                {reasons_html}
-
-            </div>
-            """,
-            unsafe_allow_html=True,
+        st.warning(
+            "Отрицательная динамика повторяется "
+            "и последнее отклонение стало сильнее."
         )
 
 
-    st.markdown(
-        f"""
-        <div class="callout good">
+    if result["rating_change"] < 0:
 
-            <b>
-                {result['disposition']}
-            </b>
-
-            <br>
-
-            {result['action']}
-
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-
-    with st.expander(
-        "Показать другие возможные причины",
-        expanded=False,
-    ):
-
-        sorted_hypotheses = sorted(
-            result["posterior"].items(),
-            key=lambda item:
-            item[1],
-            reverse=True,
+        st.write(
+            f"Оценка гостя также изменилась: "
+            f"**{st.session_state.rating1} → "
+            f"{st.session_state.rating3}**."
         )
 
-        for (
-            hypothesis,
-            confidence,
-        ) in sorted_hypotheses:
 
-            st.write(
-                f"**{hypothesis}:** "
-                f"{confidence:.1%}"
-            )
-
-        st.caption(
-            "Эти значения являются "
-            "иллюстративной оценкой для демонстрации работы системы, "
-            "а не эмпирически калиброванной вероятностью."
-        )
-
+    # -----------------------------------------------------
+    # ВЕДУЩАЯ ПРИЧИНА
+    # -----------------------------------------------------
 
     st.subheader(
-        "3. Вы уже попробовали предложенный вариант?"
+        "Наиболее вероятное объяснение"
     )
+
+
+    st.info(
+        result["leading_hypothesis"]
+    )
+
+
+    st.write(
+        "Условная поддержка этой версии: "
+        f"**{result['leading_confidence']:.0%}**"
+    )
+
 
     st.caption(
-        "Если да — просто укажите, что получилось."
-    )
-
-
-    col1, col2, col3 = (
-        st.columns(3)
-    )
-
-
-    if col1.button(
-        "Помогло",
-        use_container_width=True,
-    ):
-
-        st.session_state.solution_answer = (
-            "validated"
-        )
-
-
-    if col2.button(
-        "Не помогло",
-        use_container_width=True,
-    ):
-
-        st.session_state.solution_answer = (
-            "failed"
-        )
-
-
-    if col3.button(
-        "Пока непонятно",
-        use_container_width=True,
-    ):
-
-        st.session_state.solution_answer = (
-            "inconclusive"
-        )
-
-
-    answer = (
-        st.session_state.solution_answer
-    )
-
-
-    if answer == "validated":
-
-        st.markdown(
-            """
-            <div class="callout good">
-
-                <b>
-                    Можно рассматривать более широкое применение.
-                </b>
-
-                <br>
-
-                Пробное решение помогло.
-                Расширять его лучше постепенно
-                и продолжать наблюдать за результатом.
-
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-
-    elif answer == "failed":
-
-        st.markdown(
-            """
-            <div class="callout bad">
-
-                <b>
-                    Не внедрять шире.
-                </b>
-
-                <br>
-
-                Пробное решение не помогло.
-                Нужно вернуться к другим возможным причинам
-                и вариантам действий.
-
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-
-    elif answer == "inconclusive":
-
-        st.markdown(
-            """
-            <div class="callout warn">
-
-                <b>
-                    Пока рано принимать решение.
-                </b>
-
-                <br>
-
-                Результат неясный.
-                Нужно ещё немного данных
-                или повторная проверка.
-
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-
-    st.markdown("---")
-
-
-    if st.button(
-        "Очистить и попробовать другой пример",
-        use_container_width=True,
-    ):
-
-        for key in list(
-            st.session_state.keys()
-        ):
-
-            del st.session_state[
-                key
-            ]
-
-        st.rerun()
-
-
-st.caption(
-    "SETDS research demonstrator · "
-    "simple input → transparent analysis → "
-    "simple feedback on the proposed solution"
-)
+       
