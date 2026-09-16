@@ -11,24 +11,31 @@ st.set_page_config(
 st.markdown(
     """
     <style>
-    [data-testid="stSidebar"]{display:none}
+    [data-testid="stSidebar"]{
+        display:none;
+    }
+
     .block-container{
         max-width:760px;
         padding-top:1.1rem;
         padding-bottom:3rem;
     }
+
     h1{
         font-size:2rem!important;
         letter-spacing:-.03em;
         margin-bottom:.2rem;
     }
+
     h2{
         font-size:1.25rem!important;
     }
+
     .small{
         color:#667085;
         font-size:.86rem;
     }
+
     .hero{
         padding:18px;
         border-radius:18px;
@@ -36,6 +43,7 @@ st.markdown(
         border:1px solid #dce5ff;
         margin-bottom:16px;
     }
+
     .card{
         background:#fff;
         border:1px solid #e5eaf1;
@@ -44,6 +52,7 @@ st.markdown(
         margin:10px 0;
         box-shadow:0 8px 22px rgba(16,24,40,.04);
     }
+
     .callout{
         padding:14px 15px;
         border-radius:14px;
@@ -51,18 +60,22 @@ st.markdown(
         border-left:4px solid #3157d5;
         margin:10px 0;
     }
+
     .good{
         background:#ecfdf3;
         border-left-color:#12b76a;
     }
+
     .warn{
         background:#fff8e8;
         border-left-color:#f59e0b;
     }
+
     .bad{
         background:#fff1f3;
         border-left-color:#f04438;
     }
+
     .pill{
         display:inline-block;
         padding:4px 9px;
@@ -71,26 +84,31 @@ st.markdown(
         font-weight:800;
         margin-right:5px;
     }
+
     .purple{
         background:#ede9fe;
         color:#6d28d9;
     }
+
     .stButton>button{
         border-radius:12px;
         min-height:3rem;
         font-weight:800;
     }
+
     div[data-testid="stMetric"]{
         background:#fff;
         border:1px solid #e5eaf1;
         border-radius:15px;
         padding:12px;
     }
+
     @media(max-width:700px){
         .block-container{
             padding-left:1rem;
             padding-right:1rem;
         }
+
         h1{
             font-size:1.6rem!important;
         }
@@ -99,6 +117,7 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
+
 
 def init():
     defaults = {
@@ -111,8 +130,14 @@ def init():
         "rating3": 7,
         "spa_feedback": True,
         "ops_confirm": True,
+        "room_problem": False,
+        "service_problem": False,
+        "staff_problem": False,
+        "price_problem": False,
+        "competitor_problem": False,
+        "custom_fact": "",
         "analysis": None,
-        "pilot_answer": None,
+        "solution_answer": None,
     }
 
     for key, value in defaults.items():
@@ -122,19 +147,27 @@ def init():
 
 init()
 
+
 st.markdown(
     """
     <div class="hero">
-        <div class="small"><b>Interactive research demo</b></div>
-        <h1>◈ SETDS</h1>
         <div class="small">
-            Введите несколько значений. Нажмите одну кнопку.
-            Получите объяснение и следующий шаг.
+            <b>Interactive research demo</b>
+        </div>
+
+        <h1>◈ SETDS</h1>
+
+        <div class="small">
+            Введите несколько значений, отметьте известные факты
+            и нажмите одну кнопку.
+            Система покажет, что изменилось, почему это могло произойти
+            и что разумно сделать дальше.
         </div>
     </div>
     """,
     unsafe_allow_html=True,
 )
+
 
 st.subheader("1. Введите данные")
 
@@ -143,36 +176,42 @@ st.session_state.enterprise = st.text_input(
     st.session_state.enterprise,
 )
 
-st.markdown("**Длительность трёх визитов одного повторного гостя**")
+st.markdown(
+    "**Длительность трёх визитов одного повторного гостя**"
+)
 
-v1 = st.number_input(
+visit1 = st.number_input(
     "Первый визит, ночей",
     min_value=1,
     value=int(st.session_state.visit1),
     step=1,
 )
 
-v2 = st.number_input(
+visit2 = st.number_input(
     "Второй визит, ночей",
     min_value=1,
     value=int(st.session_state.visit2),
     step=1,
 )
 
-v3 = st.number_input(
+visit3 = st.number_input(
     "Последний визит, ночей",
     min_value=1,
     value=int(st.session_state.visit3),
     step=1,
 )
 
-st.session_state.visit1 = v1
-st.session_state.visit2 = v2
-st.session_state.visit3 = v3
+st.session_state.visit1 = visit1
+st.session_state.visit2 = visit2
+st.session_state.visit3 = visit3
 
-with st.expander("Дополнительно: рейтинги", expanded=False):
 
-    r1 = st.number_input(
+with st.expander(
+    "Дополнительно: рейтинги",
+    expanded=False,
+):
+
+    rating1 = st.number_input(
         "Рейтинг первого визита",
         min_value=0,
         max_value=10,
@@ -180,7 +219,7 @@ with st.expander("Дополнительно: рейтинги", expanded=False)
         step=1,
     )
 
-    r2 = st.number_input(
+    rating2 = st.number_input(
         "Рейтинг второго визита",
         min_value=0,
         max_value=10,
@@ -188,7 +227,7 @@ with st.expander("Дополнительно: рейтинги", expanded=False)
         step=1,
     )
 
-    r3 = st.number_input(
+    rating3 = st.number_input(
         "Рейтинг последнего визита",
         min_value=0,
         max_value=10,
@@ -196,21 +235,52 @@ with st.expander("Дополнительно: рейтинги", expanded=False)
         step=1,
     )
 
-    st.session_state.rating1 = r1
-    st.session_state.rating2 = r2
-    st.session_state.rating3 = r3
+    st.session_state.rating1 = rating1
+    st.session_state.rating2 = rating2
+    st.session_state.rating3 = rating3
 
 
-st.markdown("**Что ещё известно?**")
+st.markdown("**Что известно о ситуации?**")
 
 st.session_state.spa_feedback = st.checkbox(
-    "Гость сказал, что хотел spa, но не было удобного времени",
+    "Гость сообщил о проблеме со spa или неудобном времени",
     value=st.session_state.spa_feedback,
 )
 
 st.session_state.ops_confirm = st.checkbox(
-    "Журнал или персонал подтверждает высокую загрузку spa",
+    "Журнал или персонал подтверждает высокую загрузку услуги",
     value=st.session_state.ops_confirm,
+)
+
+st.session_state.room_problem = st.checkbox(
+    "Есть проблема с номером / спальней: шум, кровать, температура, чистота или комфорт",
+    value=st.session_state.room_problem,
+)
+
+st.session_state.service_problem = st.checkbox(
+    "Есть проблема с другой услугой: питание, Wi-Fi, парковка, трансфер, бассейн или другое",
+    value=st.session_state.service_problem,
+)
+
+st.session_state.staff_problem = st.checkbox(
+    "Есть жалобы на обслуживание, очередь или нехватку персонала",
+    value=st.session_state.staff_problem,
+)
+
+st.session_state.price_problem = st.checkbox(
+    "Гость считает цену высокой или у конкурентов предложение выгоднее",
+    value=st.session_state.price_problem,
+)
+
+st.session_state.competitor_problem = st.checkbox(
+    "У конкурента появилась новая услуга, выше рейтинг или более сильное предложение",
+    value=st.session_state.competitor_problem,
+)
+
+st.session_state.custom_fact = st.text_input(
+    "Другой известный факт",
+    value=st.session_state.custom_fact,
+    placeholder="Например: в номере было шумно ночью",
 )
 
 
@@ -222,11 +292,17 @@ def analyze():
         float(st.session_state.visit3),
     ]
 
-    deviation_2 = (values[1] - values[0]) / values[0]
+    deviation_2 = (
+        values[1] - values[0]
+    ) / values[0]
 
-    baseline_3 = statistics.mean(values[:2])
+    baseline_3 = statistics.mean(
+        values[:2]
+    )
 
-    deviation_3 = (values[2] - baseline_3) / baseline_3
+    deviation_3 = (
+        values[2] - baseline_3
+    ) / baseline_3
 
     persistence = (
         int(deviation_2 < -0.30)
@@ -236,13 +312,43 @@ def analyze():
     worsening = (
         deviation_2 < 0
         and deviation_3 < 0
-        and abs(deviation_3) > abs(deviation_2)
+        and abs(deviation_3)
+        > abs(deviation_2)
     )
 
-    source_types = {"guest_behavior"}
+    source_types = {
+        "guest_behavior"
+    }
 
     if st.session_state.spa_feedback:
-        source_types.add("guest_feedback")
+        source_types.add(
+            "guest_feedback"
+        )
+
+    if st.session_state.room_problem:
+        source_types.add(
+            "room_feedback"
+        )
+
+    if st.session_state.service_problem:
+        source_types.add(
+            "service_feedback"
+        )
+
+    if st.session_state.staff_problem:
+        source_types.add(
+            "service_operation"
+        )
+
+    if st.session_state.price_problem:
+        source_types.add(
+            "price_signal"
+        )
+
+    if st.session_state.competitor_problem:
+        source_types.add(
+            "competitor_signal"
+        )
 
     if (
         persistence >= 2
@@ -251,7 +357,10 @@ def analyze():
     ):
         severity = "RED FLAG"
 
-    elif persistence >= 2 or len(source_types) >= 2:
+    elif (
+        persistence >= 2
+        or len(source_types) >= 2
+    ):
         severity = "WARNING"
 
     elif abs(deviation_3) >= 0.30:
@@ -260,11 +369,13 @@ def analyze():
     else:
         severity = "NONE"
 
+
     priors = {
-        "Spa capacity / schedule mismatch": 0.25,
-        "Price sensitivity": 0.25,
-        "Changed personal context": 0.25,
-        "Competitor pull": 0.25,
+        "Spa capacity / schedule mismatch": 0.20,
+        "Room / sleep comfort problem": 0.20,
+        "Price sensitivity": 0.20,
+        "Service / staff issue": 0.20,
+        "Competitor pull": 0.20,
     }
 
     weights = {
@@ -274,28 +385,101 @@ def analyze():
 
     reasons = []
 
+
     if st.session_state.spa_feedback:
 
-        weights["Spa capacity / schedule mismatch"] *= 2.0
+        weights[
+            "Spa capacity / schedule mismatch"
+        ] *= 2.0
 
-        weights["Price sensitivity"] *= 0.4
-
-        weights["Changed personal context"] *= 0.4
+        weights[
+            "Price sensitivity"
+        ] *= 0.7
 
         reasons.append(
             "Гость сообщил о неудобных или недоступных spa-слотах."
         )
 
+
     if st.session_state.ops_confirm:
 
-        weights["Spa capacity / schedule mismatch"] *= 1.8
+        weights[
+            "Spa capacity / schedule mismatch"
+        ] *= 1.8
 
         reasons.append(
-            "Операционный источник подтверждает высокую загрузку spa."
+            "Операционный источник подтверждает высокую загрузку услуги."
         )
 
+
+    if st.session_state.room_problem:
+
+        weights[
+            "Room / sleep comfort problem"
+        ] *= 2.0
+
+        reasons.append(
+            "Есть зафиксированная проблема с номером, спальней или качеством сна."
+        )
+
+
+    if st.session_state.service_problem:
+
+        weights[
+            "Service / staff issue"
+        ] *= 1.6
+
+        reasons.append(
+            "Есть проблема с дополнительной услугой."
+        )
+
+
+    if st.session_state.staff_problem:
+
+        weights[
+            "Service / staff issue"
+        ] *= 1.8
+
+        reasons.append(
+            "Есть признаки очередей, перегрузки или нехватки персонала."
+        )
+
+
+    if st.session_state.price_problem:
+
+        weights[
+            "Price sensitivity"
+        ] *= 1.8
+
+        reasons.append(
+            "Есть признаки ценовой чувствительности или более выгодного предложения."
+        )
+
+
+    if st.session_state.competitor_problem:
+
+        weights[
+            "Competitor pull"
+        ] *= 1.8
+
+        reasons.append(
+            "Есть признаки усиления предложения конкурента."
+        )
+
+
+    if st.session_state.custom_fact.strip():
+
+        reasons.append(
+            "Дополнительный факт: "
+            + st.session_state.custom_fact.strip()
+        )
+
+
     unnormalized = {
-        key: priors[key] * weights[key]
+        key:
+        priors[key]
+        * weights[key]
+
         for key in priors
     }
 
@@ -304,8 +488,11 @@ def analyze():
     )
 
     posterior = {
-        key: value / denominator
-        for key, value in unnormalized.items()
+        key:
+        value / denominator
+
+        for key, value
+        in unnormalized.items()
     }
 
     leading_hypothesis = max(
@@ -317,49 +504,83 @@ def analyze():
         leading_hypothesis
     ]
 
+
     if (
-        leading_confidence >= 0.60
-        and st.session_state.ops_confirm
+        leading_confidence >= 0.45
+        and len(reasons) >= 2
     ):
 
-        action = (
-            "Провести небольшой обратимый pilot: "
-            "выделить ограниченное число приоритетных "
-            "spa-слотов для повторных гостей."
+        disposition = (
+            "ПРОВЕРИТЬ РЕШЕНИЕ"
         )
 
-        disposition = "PILOT"
+        action = (
+            "Попробовать небольшой, обратимый вариант решения "
+            "на ограниченном числе гостей или смен, "
+            "а затем посмотреть, помогло ли это."
+        )
 
-    elif leading_confidence >= 0.45:
+    elif (
+        leading_confidence >= 0.35
+    ):
+
+        disposition = (
+            "СОБРАТЬ ЕЩЁ ДАННЫЕ"
+        )
 
         action = (
             "Проверить ещё один независимый источник "
-            "данных перед тестом."
+            "перед изменением процесса."
         )
-
-        disposition = "VERIFY"
 
     else:
 
-        action = (
-            "Пока наблюдать и собрать больше данных."
+        disposition = (
+            "НАБЛЮДАТЬ"
         )
 
-        disposition = "OBSERVE"
+        action = (
+            "Пока не менять процесс. "
+            "Собрать больше информации."
+        )
+
 
     return {
-        "severity": severity,
-        "deviation_2": deviation_2,
-        "deviation_3": deviation_3,
-        "persistence": persistence,
-        "worsening": worsening,
-        "source_types": sorted(source_types),
-        "posterior": posterior,
-        "leading_hypothesis": leading_hypothesis,
-        "leading_confidence": leading_confidence,
-        "reasons": reasons,
-        "action": action,
-        "disposition": disposition,
+        "severity":
+        severity,
+
+        "deviation_2":
+        deviation_2,
+
+        "deviation_3":
+        deviation_3,
+
+        "persistence":
+        persistence,
+
+        "worsening":
+        worsening,
+
+        "source_types":
+        sorted(source_types),
+
+        "posterior":
+        posterior,
+
+        "leading_hypothesis":
+        leading_hypothesis,
+
+        "leading_confidence":
+        leading_confidence,
+
+        "reasons":
+        reasons,
+
+        "action":
+        action,
+
+        "disposition":
+        disposition,
     }
 
 
@@ -369,20 +590,28 @@ if st.button(
     use_container_width=True,
 ):
 
-    st.session_state.analysis = analyze()
+    st.session_state.analysis = (
+        analyze()
+    )
 
-    st.session_state.pilot_answer = None
+    st.session_state.solution_answer = None
 
 
 if st.session_state.analysis:
 
-    result = st.session_state.analysis
+    result = (
+        st.session_state.analysis
+    )
 
     st.markdown("---")
 
-    st.subheader("2. Результат")
+    st.subheader(
+        "2. Что показывает SETDS"
+    )
 
-    col1, col2, col3 = st.columns(3)
+    col1, col2, col3 = (
+        st.columns(3)
+    )
 
     col1.metric(
         "Сигнал",
@@ -390,86 +619,132 @@ if st.session_state.analysis:
     )
 
     col2.metric(
-        "Persistence",
+        "Повторяемость",
         result["persistence"],
     )
 
     col3.metric(
-        "Последнее отклонение",
+        "Последнее изменение",
         f"{result['deviation_3']:.1%}",
     )
+
 
     st.markdown(
         f"""
         <div class="card">
-            <b>Что изменилось</b><br>
+
+            <b>
+                Что изменилось
+            </b>
+
+            <br>
+
             Длительность визитов:
+
             {st.session_state.visit1}
             →
             {st.session_state.visit2}
             →
             {st.session_state.visit3}
+
             ночей.
+
         </div>
         """,
         unsafe_allow_html=True,
     )
 
+
     st.markdown(
         f"""
         <div class="card">
-            <b>Наиболее вероятная причина</b><br>
-            {result['leading_hypothesis']}
-            —
-            <b>{result['leading_confidence']:.1%}</b>
+
+            <b>
+                Ведущая возможная причина
+            </b>
+
             <br>
+
+            {result['leading_hypothesis']}
+
+            —
+
+            <b>
+                {result['leading_confidence']:.1%}
+            </b>
+
+            <br>
+
             <span class="pill purple">
-                Inferred
+                Возможная причина
             </span>
+
         </div>
         """,
         unsafe_allow_html=True,
     )
+
 
     if result["reasons"]:
 
         reasons_html = "<br>".join(
             "• " + item
-            for item in result["reasons"]
+            for item
+            in result["reasons"]
         )
 
         st.markdown(
             f"""
             <div class="card">
-                <b>Почему система так считает</b><br>
+
+                <b>
+                    Почему система так считает
+                </b>
+
+                <br>
+
                 {reasons_html}
+
             </div>
             """,
             unsafe_allow_html=True,
         )
 
+
     st.markdown(
         f"""
         <div class="callout good">
-            <b>{result['disposition']}</b><br>
+
+            <b>
+                {result['disposition']}
+            </b>
+
+            <br>
+
             {result['action']}
+
         </div>
         """,
         unsafe_allow_html=True,
     )
 
+
     with st.expander(
-        "Показать другие гипотезы",
+        "Показать другие возможные причины",
         expanded=False,
     ):
 
         sorted_hypotheses = sorted(
             result["posterior"].items(),
-            key=lambda item: item[1],
+            key=lambda item:
+            item[1],
             reverse=True,
         )
 
-        for hypothesis, confidence in sorted_hypotheses:
+        for (
+            hypothesis,
+            confidence,
+        ) in sorted_hypotheses:
 
             st.write(
                 f"**{hypothesis}:** "
@@ -477,80 +752,129 @@ if st.session_state.analysis:
             )
 
         st.caption(
-            "Demo confidence — иллюстративная "
-            "evidence-weighted оценка, "
-            "а не эмпирически калиброванная вероятность."
+            "Эти значения являются "
+            "иллюстративной оценкой для демонстрации работы системы, "
+            "а не эмпирически калиброванной вероятностью."
         )
 
+
     st.subheader(
-        "3. Если pilot уже провели — что получилось?"
+        "3. Вы уже попробовали предложенный вариант?"
     )
 
-    c1, c2, c3 = st.columns(3)
+    st.caption(
+        "Если да — просто укажите, что получилось."
+    )
 
-    if c1.button(
-        "Сработало",
+
+    col1, col2, col3 = (
+        st.columns(3)
+    )
+
+
+    if col1.button(
+        "Помогло",
         use_container_width=True,
     ):
-        st.session_state.pilot_answer = "validated"
 
-    if c2.button(
-        "Не сработало",
+        st.session_state.solution_answer = (
+            "validated"
+        )
+
+
+    if col2.button(
+        "Не помогло",
         use_container_width=True,
     ):
-        st.session_state.pilot_answer = "failed"
 
-    if c3.button(
-        "Непонятно",
+        st.session_state.solution_answer = (
+            "failed"
+        )
+
+
+    if col3.button(
+        "Пока непонятно",
         use_container_width=True,
     ):
-        st.session_state.pilot_answer = "inconclusive"
 
-    answer = st.session_state.pilot_answer
+        st.session_state.solution_answer = (
+            "inconclusive"
+        )
+
+
+    answer = (
+        st.session_state.solution_answer
+    )
+
 
     if answer == "validated":
 
         st.markdown(
             """
             <div class="callout good">
-                <b>Можно рассматривать внедрение.</b><br>
-                Pilot подтвердил действие.
-                Масштабировать постепенно
-                и продолжать monitoring.
+
+                <b>
+                    Можно рассматривать более широкое применение.
+                </b>
+
+                <br>
+
+                Пробное решение помогло.
+                Расширять его лучше постепенно
+                и продолжать наблюдать за результатом.
+
             </div>
             """,
             unsafe_allow_html=True,
         )
+
 
     elif answer == "failed":
 
         st.markdown(
             """
             <div class="callout bad">
-                <b>Не внедрять.</b><br>
-                Pilot не подтвердил действие.
-                Вернуться к другим гипотезам
-                и альтернативам.
+
+                <b>
+                    Не внедрять шире.
+                </b>
+
+                <br>
+
+                Пробное решение не помогло.
+                Нужно вернуться к другим возможным причинам
+                и вариантам действий.
+
             </div>
             """,
             unsafe_allow_html=True,
         )
+
 
     elif answer == "inconclusive":
 
         st.markdown(
             """
             <div class="callout warn">
-                <b>Отложить решение.</b><br>
-                Результат неубедителен.
-                Нужна повторная проверка
-                или дополнительное evidence.
+
+                <b>
+                    Пока рано принимать решение.
+                </b>
+
+                <br>
+
+                Результат неясный.
+                Нужно ещё немного данных
+                или повторная проверка.
+
             </div>
             """,
             unsafe_allow_html=True,
         )
 
+
     st.markdown("---")
+
 
     if st.button(
         "Очистить и попробовать другой пример",
@@ -560,7 +884,10 @@ if st.session_state.analysis:
         for key in list(
             st.session_state.keys()
         ):
-            del st.session_state[key]
+
+            del st.session_state[
+                key
+            ]
 
         st.rerun()
 
@@ -568,5 +895,5 @@ if st.session_state.analysis:
 st.caption(
     "SETDS research demonstrator · "
     "simple input → transparent analysis → "
-    "one-step pilot feedback"
+    "simple feedback on the proposed solution"
 )
