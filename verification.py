@@ -16,8 +16,10 @@ ALLOWED_TRANSITIONS = {
     'Reassess': {'Observe','Verify','Test','Superseded','Stopped'},
 }
 REQUIRES_OWNER_SELECTION = {'Verify','Test','Pilot_validated','Pilot_failed','Implement'}
-FAST_TRACK_TRANSITION=('Owner_selected','Implement')
-FAST_TRACK_ELIGIBLE_ACTION_FAMILIES={'welcome_amenity_gesture','courtesy_late_checkout','no_action'}
+# Eq. (7): I_a = 1 only if Critical Gate = PASS (explicit, recorded by a human) and reversible test = VALIDATED.
+# There is no fast-track around it: every action, including low-risk ones, reaches Implement only through Pilot_validated.
+VALID_GATE_VALUES={'PASS','FAIL','PENDING'}
+OBSERVATION_ONLY_FAMILIES={'no_action'}
 VALID_PILOT_OUTCOMES={'validated','failed','inconclusive'}
 RISK_TIERS={('low','high'):(0.30,False),('low','medium'):(0.40,False),('medium','high'):(0.45,False),('medium','medium'):(0.55,True),('medium','low'):(0.65,True),('high','medium'):(0.70,True),('high','low'):(0.80,True)}
 DEFAULT_TIER=(0.60,True)
@@ -35,25 +37,53 @@ def required_threshold(cost_of_error,reversibility):
     return RISK_TIERS.get((cost_of_error,reversibility),DEFAULT_TIER)
 
 def _load_action(conn,hypothesis_id,action_id):
-    r=conn.execute('''SELECT hypothesis_id,reversibility,cost_of_test,action_family,lifecycle_status,is_owner_selected
+    r=conn.execute('''SELECT hypothesis_id,reversibility,cost_of_test,action_family,lifecycle_status,is_owner_selected,critical_gate
     FROM actions WHERE action_id=?''',(action_id,)).fetchone()
     if r is None: raise IntegrityError(f'action {action_id} not found')
     if r['hypothesis_id']!=hypothesis_id: raise IntegrityError('action does not belong to hypothesis')
     return r
 
+def implementation_blockers(conn,action_id):
+    """Eq. (7) check shared by the rule engine and the UI. Returns the list of reasons why Implement is not allowed
+    (empty list = I_a = 1). A missing Critical Gate is NOT a pass."""
+    a=conn.execute('SELECT action_family,lifecycle_status,critical_gate FROM actions WHERE action_id=?',(action_id,)).fetchone()
+    if a is None: raise IntegrityError(f'action {action_id} not found')
+    blockers=[]
+    if a['action_family'] in OBSERVATION_ONLY_FAMILIES:
+        blockers.append('no_action is an observation decision and is never implemented')
+    m=conn.execute('SELECT outcome_status FROM decision_memory WHERE action_id=?',(action_id,)).fetchone()
+    outcome=m['outcome_status'] if m else None
+    if a['lifecycle_status'] not in {'Pilot_validated','Implement','Monitor'} or outcome!='validated':
+        blockers.append('reversible pilot is not VALIDATED' + (f' (outcome: {outcome})' if outcome else ' (no pilot outcome recorded)'))
+    if a['critical_gate']!='PASS':
+        blockers.append('Critical Gate is not PASS' + (f' (recorded: {a["critical_gate"]})' if a['critical_gate'] else ' (not recorded)'))
+    return blockers
+
+def set_critical_gate(conn,action_id,gate,confirmed_by,basis=None):
+    """Record the Critical Gate decision for an action. Only a named human can record it; PASS needs a stated basis."""
+    if confirmed_by is None or confirmed_by.strip().lower() in {'','system'}: raise AutomationBiasGuardError('system cannot record the Critical Gate')
+    if gate not in VALID_GATE_VALUES: raise ValueError(f'gate must be one of {sorted(VALID_GATE_VALUES)}')
+    if gate=='PASS' and not (basis and basis.strip()): raise ValueError('PASS requires a stated basis')
+    cur=conn.execute('UPDATE actions SET critical_gate=?,critical_gate_basis=?,critical_gate_by=?,critical_gate_at=? WHERE action_id=?',
+        (gate,basis,confirmed_by,datetime.now().isoformat(),action_id))
+    if cur.rowcount==0: raise IntegrityError(f'action {action_id} not found')
+    conn.commit()
+
 def _evaluate(conn,hypothesis_id,action_id,requested_status,cost_of_error,is_compliance_risk,sample_too_small):
     a=_load_action(conn,hypothesis_id,action_id); current=a['lifecycle_status']; pathway='default_pathway'
-    low_risk=(a['action_family'] in FAST_TRACK_ELIGIBLE_ACTION_FAMILIES and a['reversibility']=='high' and a['cost_of_test']=='low')
     if is_compliance_risk: pathway='hard_block'
     elif sample_too_small: pathway='capped_at_observe'
-    elif cost_of_error=='low' and low_risk: pathway='fast_track_to_implement'
     def result(ok,reason,req=None,actual=None): return {'allowed':ok,'reason':reason,'from_status':current,'pathway':pathway,'required_confidence':req,'actual_confidence':actual}
     if requested_status in REQUIRES_OWNER_SELECTION and not a['is_owner_selected']: return result(False,'owner selection required')
     if pathway=='hard_block': return result(False,'hard block: external safety/legal/compliance verification required')
     if pathway=='capped_at_observe':
         if requested_status=='Observe' and requested_status in ALLOWED_TRANSITIONS.get(current,set()): return result(True,'sample too small: capped at Observe')
         return result(False,'sample too small to move beyond Observe')
-    if pathway=='fast_track_to_implement' and (current,requested_status)==FAST_TRACK_TRANSITION: return result(True,'eligible low-risk factual fast-track')
+    if requested_status=='Implement':
+        blockers=implementation_blockers(conn,action_id)
+        if blockers: return result(False,'Implement blocked (Eq. 7): '+'; '.join(blockers))
+        if 'Implement' not in ALLOWED_TRANSITIONS.get(current,set()): return result(False,f'{current}->Implement not allowed')
+        return result(True,'Critical Gate = PASS and pilot VALIDATED')
     if requested_status not in ALLOWED_TRANSITIONS.get(current,set()): return result(False,f'{current}->{requested_status} not allowed')
     if requested_status=='Test':
         threshold,verify_required=required_threshold(cost_of_error,a['reversibility'])

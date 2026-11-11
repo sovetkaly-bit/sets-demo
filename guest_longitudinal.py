@@ -30,6 +30,19 @@ def directional_persistence(deviations: list[dict], threshold: float=LOS_THRESHO
         streak+=1
     return streak
 
+def negative_persistence(deviations: list[dict], threshold: float=LOS_THRESHOLD) -> int:
+    """P_t of Eq. (2): consecutive evaluable transitions ending at the latest visit with D <= -threshold.
+    A transition that does not cross the threshold breaks the run; an undefined deviation (zero baseline)
+    is not evaluable and is skipped; the first visit has no deviation."""
+    streak=0
+    for d in reversed(deviations):
+        if d['index']==0: break
+        dev=d['deviation']
+        if dev is None: continue
+        if dev <= -threshold + 1e-9: streak+=1
+        else: break
+    return streak
+
 def latest_worsening(deviations: list[dict], threshold: float=LOS_THRESHOLD) -> bool:
     valid=[d['deviation'] for d in deviations if d['deviation'] is not None and abs(d['deviation'])>=threshold]
     return len(valid)>=2 and valid[-1]*valid[-2]>0 and abs(valid[-1])>abs(valid[-2])
@@ -51,9 +64,10 @@ def build_guest_los_signal(conn: sqlite3.Connection, guest_id: str,
     vals=[h['length_of_stay_nights'] for h in hist]
     devs=calculate_visit_deviations(vals); latest=devs[-1]
     if latest['deviation'] is None or abs(latest['deviation'])<LOS_THRESHOLD: return None
-    persistence=directional_persistence(devs); worsening=latest_worsening(devs)
+    persistence=negative_persistence(devs); worsening=latest_worsening(devs)
     sid=record_signal(conn,'guest','visits',hist[-1]['visit_id'],latest['baseline'],latest['observed'],latest['deviation'],
                       'length_of_stay',max(1,persistence),'down' if latest['deviation']<0 else 'up',worsening)
+    # guest_los_change is the PMS stay record that establishes the shortening (one source type).
     add_signal_evidence(conn,sid,'guest_los_change',hist[-1]['visit_id'],'corroborates','Derived')
     ch=service_usage_changes(hist)
     if ch['dropped'] or ch['added']:

@@ -16,9 +16,19 @@ def create_hypotheses(conn: sqlite3.Connection, signal_id: str,
         VALUES (?,?,?,?,?,?,?)''',(hid,signal_id,desc,prior/total,CAUSAL_HYPOTHESIS_EVIDENCE_TAG,now,now))
     conn.commit()
 
+def episode_key(evidence_type: str, source_ref: str, episode_id: str | None = None) -> str:
+    """Stable key used to detect repeated counting (manuscript Section 6).
+    An explicit episode_id groups all records of one underlying episode; without it the record's own
+    (evidence_type, source_ref) identifies it, so resubmitting the same record is also recognised."""
+    return episode_id.strip() if episode_id and episode_id.strip() else f'{evidence_type}:{source_ref}'
+
 def apply_evidence(conn: sqlite3.Connection, signal_id: str, evidence_type: str,
                    multiplier_by_hypothesis: dict[str,float], source_ref: str,
-                   provenance: str, effect_by_hypothesis: dict[str,str] | None = None) -> dict[str,float]:
+                   provenance: str, effect_by_hypothesis: dict[str,str] | None = None,
+                   episode_id: str | None = None) -> dict[str,float]:
+    """Eq. (3) update. A hypothesis receives the multiplier of one episode only once: a second record with
+    the same episode key (or the same record resubmitted) is logged with applied=0 and its multiplier is not
+    applied again to that hypothesis. Independent episodes (different keys) are applied separately."""
     evidence_category(evidence_type)
     validate_provenance(provenance)
     rows = conn.execute('SELECT hypothesis_id,cause_confidence FROM hypotheses WHERE signal_id=?',(signal_id,)).fetchall()
@@ -28,7 +38,11 @@ def apply_evidence(conn: sqlite3.Connection, signal_id: str, evidence_type: str,
     if unknown: raise ValueError(f'Unknown hypotheses in evidence: {sorted(unknown)}')
     for m in multiplier_by_hypothesis.values():
         if m <= 0: raise ValueError('Evidence multipliers must be >0')
-    unnorm = {h:p*multiplier_by_hypothesis.get(h,1.0) for h,p in current.items()}
+    key = episode_key(evidence_type, source_ref, episode_id)
+    seen = {r['hypothesis_id'] for r in conn.execute(
+        'SELECT DISTINCT hypothesis_id FROM evidence_log WHERE episode_key=? AND applied=1',(key,))} & set(current)
+    effective = {h:(1.0 if h in seen else multiplier_by_hypothesis.get(h,1.0)) for h in current}
+    unnorm = {h:p*effective[h] for h,p in current.items()}
     denom = sum(unnorm.values())
     posterior = {h:v/denom for h,v in unnorm.items()}
     now = datetime.now().isoformat()
@@ -38,9 +52,9 @@ def apply_evidence(conn: sqlite3.Connection, signal_id: str, evidence_type: str,
         effect = effect_by_hypothesis.get(h,'supports' if mult>1 else ('refutes' if mult<1 else 'neutral'))
         validate_effect(effect)
         conn.execute('''INSERT INTO evidence_log
-        (evidence_id,hypothesis_id,date,evidence_type,source_ref,provenance,effect,multiplier,posterior_before,posterior_after)
-        VALUES (?,?,?,?,?,?,?,?,?,?)''',
-        (f'EVL-{uuid.uuid4().hex[:10]}',h,now,evidence_type,source_ref,provenance,effect,mult,current[h],posterior[h]))
+        (evidence_id,hypothesis_id,date,evidence_type,source_ref,provenance,effect,multiplier,posterior_before,posterior_after,episode_key,applied)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?)''',
+        (f'EVL-{uuid.uuid4().hex[:10]}',h,now,evidence_type,source_ref,provenance,effect,mult,current[h],posterior[h],key,0 if h in seen else 1))
         conn.execute('UPDATE hypotheses SET cause_confidence=?,updated_date=? WHERE hypothesis_id=?',(posterior[h],now,h))
     conn.commit()
     return posterior
@@ -48,7 +62,7 @@ def apply_evidence(conn: sqlite3.Connection, signal_id: str, evidence_type: str,
 def evidence_convergence(conn: sqlite3.Connection, hypothesis_id: str) -> dict:
     hyp = conn.execute('SELECT cause_confidence,evidence_tag FROM hypotheses WHERE hypothesis_id=?',(hypothesis_id,)).fetchone()
     if hyp is None: raise ValueError(f'Hypothesis {hypothesis_id} not found')
-    rows = conn.execute('SELECT evidence_type,effect FROM evidence_log WHERE hypothesis_id=?',(hypothesis_id,)).fetchall()
+    rows = conn.execute('SELECT evidence_type,effect FROM evidence_log WHERE hypothesis_id=? AND applied=1',(hypothesis_id,)).fetchall()
     by = {'supports':set(),'refutes':set(),'neutral':set()}
     for r in rows: by[r['effect']].add(evidence_category(r['evidence_type']))
     return {

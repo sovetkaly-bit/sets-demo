@@ -24,10 +24,19 @@ This is **not** an empirical Altair model. Demo values and probabilities are ill
 
 ```bash
 python -m pip install -r requirements.txt
-python tests.py
+python tests.py        # rule modules: Eq. (2), Section 6, Eq. (7) and the earlier v8 checks
+python tests_ui.py     # headless Streamlit AppTest: Scenario A and the implementation-admission path
 python seed_demo.py
 streamlit run app.py
 ```
+
+## Rules aligned with the manuscript
+
+- **Eq. (2) red flag.** `RED_FLAG` only when the current deviation reaches the negative threshold (guest stay: D ≤ −30%), **and** P ≥ 2 consecutive negative transitions, **and** S ≥ 2 independent source types confirming the *same observed signal*. S counts source types of the signal (PMS stay records are one type); a guest comment or a staff log about the *cause* is evidence for a hypothesis and does not raise S. Owner priority only changes review order (`signals.review_queue`); it never raises S and never substitutes for corroboration. Scenario A (6 → 3 → 2 nights) gives P = 2, S = 1 → `WARNING`, with or without owner priority.
+- **Section 6 episodes.** `apply_evidence(..., episode_id=...)` keys evidence by episode (without `episode_id`, by evidence type + source reference). A hypothesis receives the multiplier of one episode once; a second record of the same episode, or the same record resubmitted, is logged with `applied = 0` and leaves the posterior unchanged. Independent episodes count separately: with the Scenario A multipliers H3 = 0.50 after one episode and ≈ 0.667 after two independent ones, in either order.
+- **Eq. (7) implementation.** `Implement` requires an explicit Critical Gate = `PASS` (recorded by a named human with a basis, `verification.set_critical_gate`) **and** a pilot outcome `validated`. A missing Gate is not a pass. The earlier low-risk fast-track (`Owner_selected → Implement`) is removed, and `no_action` is an observation that is never implemented. The Streamlit page "Анализ → Допуск к внедрению" calls the same functions and shows the block reason.
+- Eq. (4)–(6) remain the manuscript's computational part and are not implemented in this prototype.
+- Existing databases are migrated on start (`database.init_schema` adds the new columns).
 
 ## Suggested live demo
 

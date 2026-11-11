@@ -43,7 +43,7 @@ def record_owner_decision(conn,action_id,owner_rationale,confirmed_by='owner'):
 
 def generate_guest_capacity_alternatives(conn,hypothesis_id):
     return [
-      create_action(conn,hypothesis_id,'Status quo / observe','no_action',{'repeat_probability':{'direction':'down','magnitude':'small','probability':0.4,'probability_basis':'Illustrative'}},'high','low','Monitor'),
+      create_action(conn,hypothesis_id,'Status quo / observe','no_action',{'repeat_probability':{'direction':'down','magnitude':'small','probability':0.4,'probability_basis':'Illustrative'}},'high','low','Observe'),
       create_action(conn,hypothesis_id,'Prepare priority-booking process','spa_priority_prepare',{'operational_readiness':{'direction':'up','magnitude':'medium','probability':0.7,'probability_basis':'Illustrative'}},'high','low','Prepare'),
       create_action(conn,hypothesis_id,'Pilot priority spa slots for repeat guests','spa_priority_booking',{'guest_satisfaction':{'direction':'up','magnitude':'medium','probability':0.65,'probability_basis':'Illustrative'},'staff_load':{'direction':'up','magnitude':'small','probability':0.45,'probability_basis':'Illustrative'}},'high','low','Test',pilot_success_rule='>=60% offered slots used and no material queue deterioration',pilot_stop_rule='queue time or staff complaints worsen materially',is_system_preferred=True),
       create_action(conn,hypothesis_id,'Full priority-slot rollout','spa_priority_full',{'guest_satisfaction':{'direction':'up','magnitude':'medium','probability':0.65,'probability_basis':'Illustrative'},'staff_load':{'direction':'up','magnitude':'medium','probability':0.6,'probability_basis':'Illustrative'}},'medium','medium','Verify')

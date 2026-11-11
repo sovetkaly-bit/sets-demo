@@ -111,7 +111,9 @@ CREATE TABLE IF NOT EXISTS evidence_log (
     effect TEXT NOT NULL,
     multiplier REAL NOT NULL,
     posterior_before REAL NOT NULL,
-    posterior_after REAL NOT NULL
+    posterior_after REAL NOT NULL,
+    episode_key TEXT,
+    applied INTEGER NOT NULL DEFAULT 1
 );
 
 CREATE TABLE IF NOT EXISTS actions (
@@ -131,7 +133,11 @@ CREATE TABLE IF NOT EXISTS actions (
     pilot_stop_rule TEXT,
     lifecycle_status TEXT NOT NULL DEFAULT 'Proposed',
     selected_at TEXT,
-    last_status_at TEXT
+    last_status_at TEXT,
+    critical_gate TEXT,
+    critical_gate_basis TEXT,
+    critical_gate_by TEXT,
+    critical_gate_at TEXT
 );
 
 CREATE TABLE IF NOT EXISTS decision_memory (
@@ -175,8 +181,19 @@ def get_connection(path: str | Path = DEFAULT_DB) -> sqlite3.Connection:
     conn.execute('PRAGMA foreign_keys = ON')
     return conn
 
+# Columns added after v8; applied to databases created by earlier versions.
+_ADDED_COLUMNS = {
+    'evidence_log': [('episode_key','TEXT'),('applied','INTEGER NOT NULL DEFAULT 1')],
+    'actions': [('critical_gate','TEXT'),('critical_gate_basis','TEXT'),('critical_gate_by','TEXT'),('critical_gate_at','TEXT')],
+}
+
 def init_schema(conn: sqlite3.Connection) -> None:
     conn.executescript(SCHEMA)
+    for table, columns in _ADDED_COLUMNS.items():
+        existing = {r[1] for r in conn.execute(f'PRAGMA table_info({table})')}
+        for name, ddl in columns:
+            if name not in existing:
+                conn.execute(f'ALTER TABLE {table} ADD COLUMN {name} {ddl}')
     conn.commit()
 
 def reset_db(path: str | Path = DEFAULT_DB) -> sqlite3.Connection:
