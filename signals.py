@@ -2,7 +2,7 @@ from __future__ import annotations
 import sqlite3, uuid
 from datetime import datetime
 from evidence_registry import evidence_category, validate_provenance, validate_signal_relation
-from red_flags import classify
+from red_flags import classify, review_order_key
 
 RULE_VERSION = 'signals-v8'
 
@@ -52,3 +52,8 @@ def refresh_signal_state(conn: sqlite3.Connection, signal_id: str,
     conn.execute('UPDATE signals SET corroborating_source_types_count=?,status=? WHERE signal_id=?',(len(cats),status,signal_id))
     conn.commit()
     return status
+
+def review_queue(conn: sqlite3.Connection, owner_priority_set: set[str] | None = None) -> list[sqlite3.Row]:
+    """Signals ordered for review. Owner priority orders ties only; it does not change status or S_t."""
+    rows = conn.execute('SELECT * FROM signals').fetchall()
+    return sorted(rows, key=lambda r: review_order_key(r['status'], r['impact_dimension'], owner_priority_set))

@@ -6,6 +6,8 @@ from pathlib import Path
 
 import streamlit as st
 
+import engine
+
 
 # =========================================================
 # НАСТРОЙКИ ПРИЛОЖЕНИЯ
@@ -523,270 +525,20 @@ def update_decision_feedback(
 # АНАЛИЗ ОДНОГО ГОСТЯ
 # =========================================================
 
-def analyze_guest(visits):
-
-    if len(visits) < 2:
-        return None
-
-    nights = [
-        float(v["nights"])
-        for v in visits
-    ]
-
-    latest = nights[-1]
-
-    baseline = statistics.mean(
-        nights[:-1]
+def analyze_guest(
+    visits,
+    owner_priority=False,
+    signal_sources=(),
+    staff_log_confirms_spa=False,
+):
+    """Analysis is delegated to engine.py, which calls the SETDS rule modules
+    (red_flags / signals / hypotheses / verification) covered by tests.py."""
+    return engine.analyze_visits(
+        visits,
+        owner_priority=owner_priority,
+        signal_sources=signal_sources,
+        staff_log_confirms_spa=staff_log_confirms_spa,
     )
-
-    latest_deviation = (
-        0
-        if baseline == 0
-        else (
-            latest - baseline
-        ) / baseline
-    )
-
-    negative_transitions = 0
-
-    for i in range(
-        1,
-        len(nights),
-    ):
-
-        previous_mean = statistics.mean(
-            nights[:i]
-        )
-
-        if previous_mean == 0:
-            continue
-
-        deviation = (
-            nights[i] - previous_mean
-        ) / previous_mean
-
-        if deviation <= -0.30:
-            negative_transitions += 1
-
-
-    latest_visit = visits[-1]
-
-
-    hypotheses = {
-        "Проблема с номером или качеством сна": 1.0,
-
-        "Перегруженность spa или неудобное время услуги": 1.0,
-
-        "Проблема с обслуживанием или персоналом": 1.0,
-
-        "Проблема с другой услугой": 1.0,
-
-        "Ценовая чувствительность гостя": 1.0,
-
-        "Более сильное предложение конкурента": 1.0,
-
-        "Личные обстоятельства гостя": 1.0,
-    }
-
-
-    reasons = []
-
-
-    if latest_visit[
-        "room_problem"
-    ]:
-
-        hypotheses[
-            "Проблема с номером или качеством сна"
-        ] *= 3.0
-
-        reasons.append(
-            "В последнем визите отмечена проблема с номером или комфортом."
-        )
-
-
-    if latest_visit[
-        "spa_problem"
-    ]:
-
-        hypotheses[
-            "Перегруженность spa или неудобное время услуги"
-        ] *= 3.0
-
-        reasons.append(
-            "Гость сообщил о проблеме со spa или временем услуги."
-        )
-
-
-    if latest_visit[
-        "staff_problem"
-    ]:
-
-        hypotheses[
-            "Проблема с обслуживанием или персоналом"
-        ] *= 3.0
-
-        reasons.append(
-            "Есть жалобы на очередь, задержки или обслуживание."
-        )
-
-
-    if latest_visit[
-        "service_problem"
-    ]:
-
-        hypotheses[
-            "Проблема с другой услугой"
-        ] *= 2.5
-
-        reasons.append(
-            "Есть проблема с дополнительной услугой."
-        )
-
-
-    if latest_visit[
-        "price_problem"
-    ]:
-
-        hypotheses[
-            "Ценовая чувствительность гостя"
-        ] *= 3.0
-
-        reasons.append(
-            "Есть признаки ценовой чувствительности."
-        )
-
-
-    if latest_visit[
-        "competitor_problem"
-    ]:
-
-        hypotheses[
-            "Более сильное предложение конкурента"
-        ] *= 3.0
-
-        reasons.append(
-            "Есть признаки усиления предложения конкурента."
-        )
-
-
-    if latest_visit[
-        "free_text"
-    ]:
-
-        reasons.append(
-            "Комментарий: "
-            + latest_visit[
-                "free_text"
-            ]
-        )
-
-
-    total = sum(
-        hypotheses.values()
-    )
-
-
-    posterior = {
-        key:
-        value / total
-
-        for key, value
-        in hypotheses.items()
-    }
-
-
-    ranking = sorted(
-        posterior.items(),
-        key=lambda x: x[1],
-        reverse=True,
-    )
-
-
-    leading_hypothesis = (
-        ranking[0][0]
-    )
-
-
-    leading_confidence = (
-        ranking[0][1]
-    )
-
-
-    if negative_transitions >= 3:
-
-        signal_level = (
-            "Сильный сигнал"
-        )
-
-
-    elif negative_transitions >= 2:
-
-        signal_level = (
-            "Средний сигнал"
-        )
-
-
-    elif abs(
-        latest_deviation
-    ) >= 0.30:
-
-        signal_level = (
-            "Слабый сигнал"
-        )
-
-
-    else:
-
-        signal_level = (
-            "Заметного сигнала нет"
-        )
-
-
-    if (
-        leading_confidence >= 0.30
-        and len(reasons) >= 1
-    ):
-
-        recommendation = (
-            "Проверить небольшое и обратимое решение, "
-            "не меняя весь процесс сразу."
-        )
-
-
-    else:
-
-        recommendation = (
-            "Собрать ещё один независимый источник данных "
-            "перед изменением процесса."
-        )
-
-
-    return {
-        "signal_level":
-        signal_level,
-
-        "latest_deviation":
-        latest_deviation,
-
-        "negative_transitions":
-        negative_transitions,
-
-        "leading_hypothesis":
-        leading_hypothesis,
-
-        "leading_confidence":
-        leading_confidence,
-
-        "reasons":
-        reasons,
-
-        "ranking":
-        ranking,
-
-        "recommendation":
-        recommendation,
-    }
 
 
 # =========================================================
@@ -1549,9 +1301,76 @@ elif page == "Анализ":
 
         else:
 
-            result = analyze_guest(
-                visits
+            st.subheader(
+                "Параметры анализа"
             )
+
+
+            owner_priority = st.checkbox(
+                "Приоритет владельца: длительность проживания "
+                "(влияет только на порядок рассмотрения)",
+                key="opt_owner_priority",
+            )
+
+
+            signal_sources = st.multiselect(
+                "Независимые источники, подтвердившие само "
+                "сокращение проживания (помимо PMS)",
+                list(engine.SIGNAL_SOURCE_OPTIONS.keys()),
+                format_func=engine.SIGNAL_SOURCE_OPTIONS.get,
+                key="opt_signal_sources",
+            )
+
+
+            staff_log = st.checkbox(
+                "Журнал персонала подтверждает проблему со spa "
+                "(отдельный эпизод для гипотезы)",
+                key="opt_staff_log",
+            )
+
+
+            visits_key = (
+                guest["guest_id"],
+                tuple(
+                    (
+                        v["visit_date"],
+                        v["nights"],
+                        v["room_problem"],
+                        v["spa_problem"],
+                        v["service_problem"],
+                        v["staff_problem"],
+                        v["price_problem"],
+                        v["competitor_problem"],
+                        v["free_text"],
+                    )
+                    for v in visits
+                ),
+                owner_priority,
+                tuple(signal_sources),
+                staff_log,
+            )
+
+
+            if (
+                st.session_state.get("case_key")
+                != visits_key
+            ):
+
+                st.session_state.case = analyze_guest(
+                    visits,
+                    owner_priority=owner_priority,
+                    signal_sources=signal_sources,
+                    staff_log_confirms_spa=staff_log,
+                )
+
+                st.session_state.case["actions"] = {}
+
+                st.session_state.case_key = visits_key
+
+                st.session_state.adm_msg = None
+
+
+            result = st.session_state.case
 
 
             st.subheader(
@@ -1567,10 +1386,41 @@ elif page == "Анализ":
             )
 
 
+            col_p, col_s = st.columns(2)
+
+            col_p.metric(
+                "P: подряд негативных визитов",
+                result["persistence"],
+            )
+
+            col_s.metric(
+                "S: независимых типов источников",
+                result["source_types"],
+            )
+
+
+            st.caption(
+                "Красный флаг требует одновременно: порог "
+                "−30% достигнут сейчас, P ≥ 2 и S ≥ 2. "
+                "Приоритет владельца меняет только порядок "
+                "рассмотрения, но не S."
+            )
+
+
             st.metric(
                 "Последнее изменение длительности",
                 f"{result['latest_deviation']:.0%}",
             )
+
+
+            if result["leading_hypothesis"] is None:
+
+                st.info(
+                    "Порог отклонения не достигнут: "
+                    "гипотезы не строятся."
+                )
+
+                st.stop()
 
 
             st.subheader(
@@ -1651,6 +1501,201 @@ elif page == "Анализ":
                         f"**{hypothesis}** — "
                         f"{confidence:.0%}"
                     )
+
+
+            st.subheader(
+                "Допуск к внедрению"
+            )
+
+
+            st.caption(
+                "Внедрение разрешено, только если Critical Gate "
+                "явно = PASS и обратимый пилот = VALIDATED. "
+                "Отсутствие записи Gate не считается PASS."
+            )
+
+
+            family = st.selectbox(
+                "Вариант действия",
+                list(engine.ACTION_OPTIONS.keys()),
+                format_func=lambda f: engine.ACTION_OPTIONS[f][0],
+                key="adm_family",
+            )
+
+
+            actions_map = result["actions"]
+
+            if family not in actions_map:
+
+                actions_map[family] = engine.create_case_action(
+                    result,
+                    family,
+                )
+
+            action_id = actions_map[family]
+
+
+            def report(res):
+
+                st.session_state.adm_msg = res
+
+
+            if st.button(
+                "1. Выбрать вариант (решение владельца)",
+                key="adm_select",
+            ):
+
+                report(
+                    engine.select_action(
+                        result,
+                        action_id,
+                        "выбрано владельцем в интерфейсе",
+                    )
+                )
+
+
+            if st.button(
+                "2. Начать обратимый пилот (Test)",
+                key="adm_test",
+            ):
+
+                report(
+                    engine.move(
+                        result,
+                        action_id,
+                        "Test",
+                    )
+                )
+
+
+            pilot_choice = st.selectbox(
+                "Итог пилота",
+                ["validated", "failed", "inconclusive"],
+                key="adm_pilot_choice",
+            )
+
+
+            if st.button(
+                "3. Записать итог пилота",
+                key="adm_pilot",
+            ):
+
+                report(
+                    engine.pilot_outcome(
+                        result,
+                        action_id,
+                        pilot_choice,
+                    )
+                )
+
+
+            if st.button(
+                "4. Зафиксировать результат пилота в статусе",
+                key="adm_pilot_status",
+            ):
+
+                target = {
+                    "validated": "Pilot_validated",
+                    "failed": "Pilot_failed",
+                    "inconclusive": "Reassess",
+                }[pilot_choice]
+
+                report(
+                    engine.move(
+                        result,
+                        action_id,
+                        target,
+                    )
+                )
+
+
+            gate_choice = st.radio(
+                "Critical Gate (юридическая, безопасность, бренд)",
+                ["PASS", "FAIL"],
+                horizontal=True,
+                key="adm_gate_choice",
+            )
+
+
+            gate_basis = st.text_input(
+                "Основание для Gate",
+                key="adm_gate_basis",
+            )
+
+
+            if st.button(
+                "5. Записать Critical Gate",
+                key="adm_gate",
+            ):
+
+                report(
+                    engine.critical_gate(
+                        result,
+                        action_id,
+                        gate_choice,
+                        gate_basis,
+                    )
+                )
+
+
+            if st.button(
+                "6. Запросить внедрение (Implement)",
+                key="adm_implement",
+            ):
+
+                report(
+                    engine.move(
+                        result,
+                        action_id,
+                        "Implement",
+                    )
+                )
+
+
+            msg = st.session_state.get("adm_msg")
+
+            if msg is not None:
+
+                if msg[0]:
+
+                    st.success(
+                        "Выполнено."
+                    )
+
+                else:
+
+                    st.error(
+                        "Отказ: "
+                        + msg[1]
+                    )
+
+
+            state = engine.action_state(
+                result,
+                action_id,
+            )
+
+
+            st.write(
+                f"Статус: **{state['status']}** · "
+                f"Critical Gate: **{state['gate'] or 'не записан'}** · "
+                f"Итог пилота: **{state['pilot_outcome'] or 'нет'}**"
+            )
+
+
+            if state["status"] in ("Implement", "Monitor"):
+
+                st.success(
+                    "Внедрение разрешено: Critical Gate = PASS "
+                    "и пилот = VALIDATED."
+                )
+
+            else:
+
+                st.warning(
+                    "Внедрение пока заблокировано: "
+                    + "; ".join(state["blockers"])
+                )
 
 
             if st.button(

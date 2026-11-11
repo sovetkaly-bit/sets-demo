@@ -24,7 +24,8 @@ def seed(path='setds_demo.db'):
     ])
     conn.commit()
     sid=build_guest_los_signal(conn,'G-104',{'length_of_stay'})
-    add_signal_evidence(conn,sid,'targeted_question_confirms','F-2030-104','corroborates','Guest-reported')
+    # Scenario A: only the PMS stay records confirm the shortened stay (S=1). The guest comment and the
+    # staff log are evidence about the access hypothesis (H3) below, not confirmation of the signal.
     refresh_signal_state(conn,sid,{'length_of_stay'})
     create_hypotheses(conn,sid,{
         'H1':('price sensitivity',0.25),
@@ -32,8 +33,9 @@ def seed(path='setds_demo.db'):
         'H3':('spa capacity / schedule mismatch',0.25),
         'H4':('competitor pull',0.25),
     })
-    apply_evidence(conn,sid,'targeted_question_confirms',{'H1':0.4,'H2':0.4,'H3':2.0,'H4':1.0},'F-2030-104','Guest-reported')
-    apply_evidence(conn,sid,'operational_data_confirms',{'H3':1.8},'capacity-log-demo','Observed')
+    # Manuscript multipliers: guest comment [1,1,3,1] -> H3 = 0.50; independent staff log [1,1,2,1] -> H3 = 0.667.
+    apply_evidence(conn,sid,'targeted_question_confirms',{'H1':1.0,'H2':1.0,'H3':3.0,'H4':1.0},'F-2030-104','Guest-reported',episode_id='EP-A-guest-comment')
+    apply_evidence(conn,sid,'operational_data_confirms',{'H3':2.0},'capacity-log-demo','Observed',episode_id='EP-A-staff-log')
     action_ids=generate_guest_capacity_alternatives(conn,'H3')
     conn.execute('INSERT INTO employees VALUES (?,?,?)',('E-01','front desk','Illustrative demo employee'))
     record_shift_observation(conn,'E-01','2030-07-10','front desk',8,0,30,12,18,2,2,0,4,3,2,'Observed')
